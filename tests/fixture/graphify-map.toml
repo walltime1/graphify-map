@@ -1,0 +1,26 @@
+title = "fixture"
+
+[[layers]]
+id = "top"
+name = "Screens"
+[[layers]]
+id = "bottom"
+name = "Storage"
+
+[[areas]]
+id = "ui"
+name = "Screens"
+layer = "top"
+files = ["app/ui/**"]
+
+[[areas]]
+id = "core"
+name = "Storage"
+layer = "bottom"
+files = ["app/core/**"]
+
+[[lab]]
+id = "tests"
+name = "Tests"
+files = ["tests/**"]
+tests = true

@@ -1,0 +1,134 @@
+# Area config for graphify itself (https://github.com/Graphify-Labs/graphify).
+# Run from a graphify checkout:  graphify-map . -c path/to/graphify.toml
+title = "graphify"
+
+[[layers]]
+id = "run"
+name = "How you run it"
+[[layers]]
+id = "read"
+name = "Find and read code"
+[[layers]]
+id = "graph"
+name = "Build and understand the graph"
+[[layers]]
+id = "out"
+name = "Show and serve"
+[[layers]]
+id = "base"
+name = "Shared plumbing"
+
+[[areas]]
+id = "cli"
+name = "Command line"
+layer = "run"
+blurb = "The graphify command and its subcommands."
+files = ["graphify/cli.py", "graphify/__main__.py", "graphify/__init__.py"]
+
+[[areas]]
+id = "install"
+name = "Install and hooks"
+layer = "run"
+blurb = "Copies the skill into each AI tool and installs git hooks."
+files = ["graphify/install.py", "graphify/hooks.py", "graphify/rcfile.py"]
+
+[[areas]]
+id = "detect"
+name = "File scanner"
+layer = "read"
+blurb = "Walks a folder and sorts files by kind."
+files = ["graphify/detect.py", "graphify/file_slice.py", "graphify/manifest.py"]
+
+[[areas]]
+id = "extract"
+name = "Extract driver"
+layer = "read"
+blurb = "Runs the right extractor per file and caches results."
+files = ["graphify/extract.py", "graphify/cache.py"]
+
+[[areas]]
+id = "engine"
+name = "Extractor engine"
+layer = "read"
+blurb = "Shared tree-sitter machinery the language extractors sit on."
+files = ["graphify/extractors/engine.py", "graphify/extractors/base.py", "graphify/extractors/models.py", "graphify/extractors/__init__.py"]
+
+[[areas]]
+id = "resolve"
+name = "Symbol resolution"
+layer = "read"
+blurb = "Works out which call or import points at which definition."
+files = ["graphify/extractors/resolution.py", "graphify/*resolution.py", "graphify/*_dispatch.py",
+         "graphify/resolver_registry.py", "graphify/cross_repo_*.py"]
+
+[[areas]]
+id = "langs"
+name = "Language extractors"
+layer = "read"
+blurb = "One module per language, from Rust to COBOL."
+files = ["graphify/extractors/*.py"]
+
+[[areas]]
+id = "ingest"
+name = "Outside sources"
+layer = "read"
+blurb = "Pulls in URLs, SCIP indexes, databases, manifests and audio."
+files = ["graphify/*ingest.py", "graphify/*_introspect.py", "graphify/google_workspace.py", "graphify/transcribe.py"]
+
+[[areas]]
+id = "build"
+name = "Graph builder"
+layer = "graph"
+blurb = "Merges extractions into one graph and removes duplicates."
+files = ["graphify/build.py", "graphify/dedup.py", "graphify/semantic_cleanup.py", "graphify/multigraph_compat.py",
+         "graphify/validate.py", "graphify/global_graph.py", "graphify/_minhash.py", "graphify/ids.py"]
+
+[[areas]]
+id = "analyze"
+name = "Analysis"
+layer = "graph"
+blurb = "Clusters, key nodes, impact and health checks."
+files = ["graphify/cluster.py", "graphify/analyze.py", "graphify/affected.py", "graphify/diagnostics.py",
+         "graphify/reflect.py", "graphify/benchmark.py"]
+
+[[areas]]
+id = "llm"
+name = "LLM calls"
+layer = "graph"
+blurb = "Asks a model to label and relate things the parser cannot."
+files = ["graphify/llm.py"]
+
+[[areas]]
+id = "export"
+name = "Exports and reports"
+layer = "out"
+blurb = "Writes graph.json, HTML, wiki, reports and graph databases."
+files = ["graphify/export.py", "graphify/exporters/*.py", "graphify/tree_html.py", "graphify/callflow_html.py",
+         "graphify/wiki.py", "graphify/report.py"]
+
+[[areas]]
+id = "serve"
+name = "Server and watcher"
+layer = "out"
+blurb = "MCP and HTTP server, file watcher, query log."
+files = ["graphify/serve.py", "graphify/watch.py", "graphify/querylog.py", "graphify/prs.py"]
+
+[[areas]]
+id = "paths"
+name = "Paths and safety"
+layer = "base"
+blurb = "Path handling and input validation used everywhere."
+files = ["graphify/paths.py", "graphify/security.py"]
+
+[[lab]]
+id = "tests"
+name = "Test suite"
+blurb = "Tests that check the shipped code."
+files = ["tests/**"]
+tests = true
+
+[[lab]]
+id = "tools"
+name = "Dev tools"
+blurb = "Skill generators and demo scripts. Not shipped."
+files = ["tools/**", "scripts/**"]
