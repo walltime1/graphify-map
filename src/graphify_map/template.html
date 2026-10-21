@@ -649,7 +649,7 @@ function renderTrees() {
     const isColl = collapsed[key].has(n.id), group = !["file", "function", "method"].includes(n.kind);
     const dot = n.unit ? `<span class="dot" style="background:var(--r${unitLevel(n.unit)})"></span>` : `<span class="dot"></span>`;
     const more = n.unit ? `+${n.all.length - 1} ${n.kind === "class" ? "methods" : "symbols"}` : `+${n.files.length} files`;
-    const tog = n.kids.length && n.kind !== "layer" && (depth > 0 || n.unit)
+    const tog = n.kids.length
       ? `<button class="tg" data-tog="${esc(n.id)}" aria-expanded="${!isColl}">${isColl ? more : "fold"}</button>` : "";
     return `<div class="trow ${n.kind}${group ? " group" : ""}" tabindex="0" style="padding-left:${depth * 18}px" data-k="${key}" data-id="${esc(n.id)}">${dot}<span class="lb">${esc(n.label)}<em>${fmt(n.lines)}</em></span>${tog}</div>`;
   }).join("");
