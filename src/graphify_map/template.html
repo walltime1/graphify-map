@@ -61,12 +61,12 @@ svg#map.drag{cursor:grabbing}
 .box.lab rect{stroke-dasharray:5 3}
 .box .nm{font:600 14px var(--sans)}
 .box .mt{font:400 12px var(--sans)}
-.box.dim{opacity:.22}
+.box.dim{opacity:.5}
 .box.sel rect{stroke:var(--focus);stroke-width:3}
 .box:focus-visible rect{stroke:var(--focus);stroke-width:3}
 .edge{fill:none;stroke:var(--edge);opacity:.3;transition:opacity .15s}
 .edge.lab{stroke-dasharray:4 3}
-.edge.dim{opacity:.05}
+.edge.dim{opacity:.12}
 .edge.hi{stroke:var(--edge-hi);opacity:.9}
 .legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 24px;border-top:1px solid var(--hair);padding:10px 0;font-size:12px}
 .legend .lt{max-width:34ch;color:var(--muted)}.legend .lt b{color:var(--ink)}
@@ -135,7 +135,7 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .tree svg{position:absolute;left:0;top:0;width:100%;pointer-events:none;overflow:visible}
 .ln{fill:none;stroke:var(--edge);stroke-width:1;opacity:.45}
 .trow{position:relative;display:flex;align-items:center;height:24px;white-space:nowrap;cursor:pointer;font:12.5px var(--mono);transition:opacity .15s}
-.trow.fade{opacity:.18}
+.trow.fade{opacity:.5}
 .trow .lb{padding:1px 6px;border-radius:4px;display:inline-flex;gap:8px;align-items:baseline}
 .trow .lb em{font-style:normal;color:var(--muted);font-size:11px}
 .trow:hover .lb{background:var(--band)}
