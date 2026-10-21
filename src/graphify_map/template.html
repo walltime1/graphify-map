@@ -8,23 +8,23 @@
 <style>
 /* Layout: top bar, then a map pane (left) beside an explainer panel (right); stacks on phones. */
 :root{
-  --bg:#fbfbf9; --panel:#ffffff; --ink:#16181d; --muted:#5d6370; --line:#16181d; --hair:#d9dbe0;
-  --band:#f0f1f3; --edge:#6b7280; --edge-hi:#d9480f; --focus:#d9480f;
-  --r0:#ffffff; --r1:#dfe5ee; --r2:#b3c2d8; --r3:#6f86a8; --r4:#2a3f66;
-  --t0:#16181d; --t1:#16181d; --t2:#16181d; --t3:#ffffff; --t4:#ffffff;
+  --bg:#fdf6e3; --panel:#eee8d5; --ink:#073642; --muted:#586e75; --line:#073642; --hair:#d9d2bc;
+  --band:#f5eed9; --edge:#839496; --edge-hi:#cb4b16; --focus:#cb4b16;
+  --r0:#fdf6e3; --r1:#d3e4e6; --r2:#93bcd6; --r3:#26719f; --r4:#073642;
+  --t0:#073642; --t1:#073642; --t2:#073642; --t3:#fdf6e3; --t4:#fdf6e3;
   --sans:mononoki,"Mononoki Nerd Font","Mononoki Nerd Font Propo",ui-monospace,Menlo,Consolas,monospace;
   --mono:mononoki,"Mononoki Nerd Font Mono","Mononoki Nerd Font",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#101216; --panel:#171a20; --ink:#eceef2; --muted:#a0a6b3; --line:#c7ccd6; --hair:#2d323c;
-  --band:#181b21; --edge:#8b93a3; --edge-hi:#ff8a4c; --focus:#ff8a4c;
-  --r0:#171a20; --r1:#27374f; --r2:#3d5a85; --r3:#6f93c7; --r4:#b9d0f2;
-  --t0:#eceef2; --t1:#eceef2; --t2:#ffffff; --t3:#0c1118; --t4:#0c1118; color-scheme:dark}}
+  --bg:#002b36; --panel:#073642; --ink:#eee8d5; --muted:#93a1a1; --line:#93a1a1; --hair:#0f4552;
+  --band:#04323e; --edge:#657b83; --edge-hi:#e2602a; --focus:#e2602a;
+  --r0:#073642; --r1:#0e4a5a; --r2:#1d6c8c; --r3:#4da3d9; --r4:#b8dcf2;
+  --t0:#eee8d5; --t1:#eee8d5; --t2:#fdf6e3; --t3:#002b36; --t4:#002b36; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#101216; --panel:#171a20; --ink:#eceef2; --muted:#a0a6b3; --line:#c7ccd6; --hair:#2d323c;
-  --band:#181b21; --edge:#8b93a3; --edge-hi:#ff8a4c; --focus:#ff8a4c;
-  --r0:#171a20; --r1:#27374f; --r2:#3d5a85; --r3:#6f93c7; --r4:#b9d0f2;
-  --t0:#eceef2; --t1:#eceef2; --t2:#ffffff; --t3:#0c1118; --t4:#0c1118; color-scheme:dark}
+  --bg:#002b36; --panel:#073642; --ink:#eee8d5; --muted:#93a1a1; --line:#93a1a1; --hair:#0f4552;
+  --band:#04323e; --edge:#657b83; --edge-hi:#e2602a; --focus:#e2602a;
+  --r0:#073642; --r1:#0e4a5a; --r2:#1d6c8c; --r3:#4da3d9; --r4:#b8dcf2;
+  --t0:#eee8d5; --t1:#eee8d5; --t2:#fdf6e3; --t3:#002b36; --t4:#002b36; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);margin:0;
