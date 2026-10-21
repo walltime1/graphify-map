@@ -162,7 +162,13 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .tcard.empty{color:var(--muted);border-style:dashed}
 @media (max-width:860px){.trees{grid-template-columns:minmax(0,1fr)}.tcol-side{position:static;max-height:none;order:-1}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#theme{border:1.5px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:500}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+::view-transition-new(root){z-index:1}
 </style>
+<script>
+try { const t = localStorage.getItem("graphify-map-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* storage blocked: follow the OS */ }
+</script>
 
 <header>
   <h1>__TITLE__ <span>· how complex is it?</span></h1>
@@ -174,6 +180,7 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
     <button role="tab" id="nav-how" aria-selected="false" data-tab="how">How we measured</button>
   </nav>
   <input id="search" type="search" placeholder="Search an area, file or function" aria-label="Search an area, file or function" autocomplete="off">
+  <button id="theme" type="button"></button>
 </header>
 
 <main>
@@ -491,6 +498,26 @@ seg("#linkSeg", "l", v => { linkMode = v; paint(); });
 seg("#labSeg", "b", v => { showLab = v === "1"; paint(); });
 
 // ---- search
+const darkNow = () => document.documentElement.dataset.theme
+  ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+function paintThemeButton() { $("#theme").textContent = darkNow() ? "Light mode" : "Dark mode"; }
+$("#theme").addEventListener("click", () => {
+  const next = darkNow() ? "light" : "dark";
+  const apply = () => {
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("graphify-map-theme", next); } catch (e) { /* storage blocked: applies to this visit only */ }
+    paintThemeButton();
+  };
+  if (!document.startViewTransition || matchMedia("(prefers-reduced-motion:reduce)").matches) return apply();
+  // the new theme grows out of the button as a circle that reaches the farthest corner
+  const r = $("#theme").getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  document.startViewTransition(apply).ready.then(() => document.documentElement.animate(
+    { clipPath: [`circle(0 at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+    { duration: 650, easing: "cubic-bezier(.4,0,.2,1)", pseudoElement: "::view-transition-new(root)" }));
+});
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change", paintThemeButton);
+paintThemeButton();
 $("#search").addEventListener("input", e => {
   query = e.target.value.trim().toLowerCase(); showTab("map");
   if (!query) { focusSet = null; paint(); return; }
