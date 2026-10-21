@@ -32,10 +32,10 @@ body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans);margin:0;
   display:flex;flex-direction:column}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-header{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 24px;padding-block:14px;border-bottom:6px double var(--line)}
-header h1{flex:1 0 100%;text-align:center;font-size:17px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;margin:0}
-header h1 span{display:block;font-size:12px;font-weight:400;letter-spacing:.12em;text-transform:none;font-style:italic;color:var(--muted);margin-top:4px}
-nav{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 24px;padding-block:12px;border-bottom:2px solid var(--line)}
+header h1{font-size:16px;font-weight:600;margin:0}
+header h1 span{font-weight:400;color:var(--muted)}
+nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
 nav button{background:none;border:2px solid transparent;border-radius:999px;padding:5px 14px;cursor:pointer;font-weight:500}
 nav button[aria-selected="true"]{border-color:var(--line);background:var(--panel)}
 #search{border:1.5px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;width:220px;max-width:100%}
@@ -99,13 +99,10 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .chip{border:1.5px solid var(--line);background:var(--panel);border-radius:999px;padding:2px 10px;cursor:pointer;font-size:12px}
 .chip:hover{border-color:var(--focus)}
 .chip small{color:var(--muted);font-family:var(--mono);margin-left:4px}
-.page{padding:22px 0 40px;max-width:900px;margin-inline:auto}
-.page p{text-align:justify;hyphens:auto}
-.page h2,.tcol h2{text-align:center;text-transform:uppercase;letter-spacing:.16em;font-weight:600}
-.page h2::after,.tcol h2::after{content:"";display:block;width:90px;margin:10px auto 0;border-top:3px double var(--line)}
-.page h2{font-size:20px;margin:0 0 14px}
-.page h2.sub{font-size:16px;margin-top:40px}
-.page p.lead{color:var(--muted);margin:0 auto 22px;max-width:65ch;text-align:center;font-style:italic}
+.page{padding:22px 0 40px;max-width:900px}
+.page h2{font-size:22px;margin:0 0 6px}
+.page h2.sub{font-size:18px;margin-top:34px}
+.page p.lead{color:var(--muted);margin:0 0 18px;max-width:65ch}
 .row{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hair)}
 .row .nm{font-weight:600;cursor:pointer;background:none;border:0;text-align:left;padding:0}
 .row .nm:hover{color:var(--focus)}
@@ -117,6 +114,12 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .row .nm small{display:block;font:400 11px var(--mono);color:var(--muted)}
 .row.users{grid-template-columns:minmax(120px,190px) minmax(0,1fr);align-items:start}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* "How we measured" reads like a charter: centred title, justified articles */
+#how{margin-inline:auto}
+#how h2{text-align:center;text-transform:uppercase;letter-spacing:.16em;font-size:20px;margin:0 0 14px}
+#how h2::after{content:"";display:block;width:90px;margin:10px auto 0;border-top:3px double var(--line)}
+#how p{text-align:justify;hyphens:auto}
+#how p.lead{text-align:center;font-style:italic;margin-inline:auto}
 @media (max-width:860px){
   main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}
   #mapPane{height:auto}
@@ -127,12 +130,12 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
   .row{grid-template-columns:minmax(0,1fr) auto}.row .bar{grid-column:1/-1;order:3}
 }
 /* two trees */
-.tintro{padding:18px 0 0;color:var(--muted);max-width:80ch;margin-inline:auto;text-align:center;font-style:italic}
+.tintro{padding:16px 0 0;color:var(--muted);max-width:80ch}
 .tintro b{color:var(--ink);font-weight:600}
 .k{display:inline-block;width:30px;border-top:2px dotted var(--ink);vertical-align:middle;margin:0 2px}
 .k.in{border-top:2px dashed var(--edge-hi)}
 .trees{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 32px;padding:14px 0 40px;align-items:start}
-.tcol h2{font-size:15px;margin:0}.tcol .sub{font-size:12px;color:var(--muted);margin:10px 0 12px;text-align:center;font-style:italic}
+.tcol h2{font-size:15px;margin:0}.tcol .sub{font-size:12px;color:var(--muted);margin:2px 0 10px}
 .tcol-side{position:sticky;top:0;max-height:calc(100vh - 110px);overflow:auto;padding-bottom:16px}
 .tree{position:relative;min-height:48px}
 .tree svg{position:absolute;left:0;top:0;width:100%;pointer-events:none;overflow:visible}
