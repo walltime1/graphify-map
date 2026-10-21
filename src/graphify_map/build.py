@@ -6,18 +6,31 @@
 Size is non-blank code lines (lizard nloc). Tangle is decision points
 (cyclomatic complexity minus one, summed over functions) per 100 code lines.
 Connections are graphify edges between files in different areas.
+
+Inside each shipped file, lizard's functions become the smallest units. graphify's
+"method" edges group them under their class, and its call edges between them
+become the function-level links.
 """
 from __future__ import annotations
 
 import json
 from collections import defaultdict
 from pathlib import Path
+from typing import NamedTuple
 
 import lizard
 
 from .config import SKIP_DIRS, Config
 
 IGNORED_RELATIONS = {"contains", "rationale_for", "method"}
+
+
+class Func(NamedTuple):
+    name: str
+    start: int
+    end: int
+    lines: int
+    decisions: int
 
 
 def collect(root: Path, cfg: Config) -> dict[str, str]:
@@ -51,12 +64,101 @@ def load_graph(path: Path) -> tuple[list[dict], list[dict]]:
     return data["nodes"], edges
 
 
-def file_metrics(root: Path, rel: str) -> tuple[int, int]:
+def file_metrics(root: Path, rel: str) -> tuple[int, int, list[Func]]:
     try:
         r = lizard.analyze_file(str(root / rel))
     except Exception:
-        return 0, 0
-    return r.nloc, sum(max(f.cyclomatic_complexity - 1, 0) for f in r.function_list)
+        return 0, 0, []
+    funcs = [Func(f.name, f.start_line, f.end_line, f.nloc, max(f.cyclomatic_complexity - 1, 0))
+             for f in r.function_list]
+    return r.nloc, sum(f.decisions for f in funcs), funcs
+
+
+def node_line(node: dict) -> int | None:
+    loc = node.get("source_location") or ""
+    return int(loc[1:]) if loc[:1] == "L" and loc[1:].isdigit() else None
+
+
+def symbol_id(rel: str, line: int) -> str:
+    return f"{rel}#{line}"
+
+
+def file_symbols(rel: str, funcs: list[Func], nodes: list[dict], methods_of: dict[str, list[str]],
+                 file_nodes: set[str]) -> tuple[list[dict], dict[str, str], dict[str, str]]:
+    """Classes and functions of one file.
+
+    Returns the top-level symbols, a map from graphify node id to symbol id, and a map
+    from method symbol id to its class symbol id. A class has no lizard entry of its own,
+    so its size and decisions are the sums over its methods.
+    """
+    by_start = {f.start: f for f in funcs}
+
+    def func_at(line: int) -> Func | None:
+        if line in by_start:
+            return by_start[line]
+        inside = [f for f in funcs if f.start <= line <= f.end]
+        return min(inside, key=lambda f: f.end - f.start, default=None)
+
+    def entry(f: Func, kind: str) -> dict:
+        return {"name": f.name, "kind": kind, "line": f.start, "lines": f.lines, "decisions": f.decisions}
+
+    by_id = {n["id"]: n for n in nodes}
+    node_sid: dict[str, str] = {}
+    sid_class: dict[str, str] = {}
+    in_class: set[int] = set()
+    classes = []
+    for n in nodes:
+        line = node_line(n)
+        if line is None or line in by_start or not methods_of.get(n["id"]):
+            continue
+        methods = []
+        for mid in methods_of[n["id"]]:
+            ml = node_line(by_id[mid]) if mid in by_id else None
+            f = func_at(ml) if ml is not None else None
+            if f and f.start not in in_class:
+                in_class.add(f.start)
+                methods.append(f)
+        if not methods:
+            continue
+        csid = symbol_id(rel, line)
+        node_sid[n["id"]] = csid
+        for f in methods:
+            sid_class[symbol_id(rel, f.start)] = csid
+        classes.append({"name": n["label"], "kind": "class", "line": line,
+                        "lines": sum(f.lines for f in methods), "decisions": sum(f.decisions for f in methods),
+                        "methods": [entry(f, "method") for f in methods]})
+
+    for n in nodes:
+        line = node_line(n)
+        if line is None or n["id"] in node_sid or n["id"] in file_nodes or n.get("file_type") == "rationale":
+            continue
+        f = func_at(line)
+        if f:
+            node_sid[n["id"]] = symbol_id(rel, f.start)
+    symbols = sorted(classes + [entry(f, "function") for f in funcs if f.start not in in_class],
+                     key=lambda x: x["line"])
+    return symbols, node_sid, sid_class
+
+
+def symbol_links(edges: list[dict], node_sid: dict[str, str],
+                 sid_class: dict[str, str]) -> dict[tuple[str, str], int]:
+    """Count graphify edges between symbols, also rolled up to the classes of their methods."""
+    links: dict[tuple[str, str], int] = defaultdict(int)
+    for e in edges:
+        if e.get("relation") in IGNORED_RELATIONS:
+            continue
+        a, b = node_sid.get(e["source"]), node_sid.get(e["target"])
+        if not a or not b or a == b:
+            continue
+        ca, cb = sid_class.get(a), sid_class.get(b)
+        links[(a, b)] += 1
+        if ca and ca != b and ca != cb:
+            links[(ca, b)] += 1
+        if cb and cb != a and ca != cb:
+            links[(a, cb)] += 1
+        if ca and cb and ca != cb:
+            links[(ca, cb)] += 1
+    return links
 
 
 def build(root: Path, cfg: Config, graph: Path | None = None) -> dict:
@@ -66,12 +168,38 @@ def build(root: Path, cfg: Config, graph: Path | None = None) -> dict:
         raise SystemExit("no source files matched any area; check the config patterns")
     nodes, edges = load_graph(graph) if graph else extract_graph(root, sorted(file_area))
 
+    lab_ids = {a.id for a in cfg.lab}
+    test_ids = {a.id for a in cfg.lab if a.tests}
+    node_file = {n["id"]: n.get("source_file") for n in nodes}
+    nodes_in_file = defaultdict(list)
+    for n in nodes:
+        if n.get("source_file"):
+            nodes_in_file[n["source_file"]].append(n)
+    methods_of = defaultdict(list)
+    file_nodes = set()
+    for e in edges:
+        if e.get("relation") == "method":
+            methods_of[e["source"]].append(e["target"])
+        elif e.get("relation") == "contains":
+            file_nodes.add(e["source"])
+
     metrics = {f: file_metrics(root, f) for f in file_area}
+    node_sid: dict[str, str] = {}
+    sid_class: dict[str, str] = {}
+
+    def file_entry(f: str, lab: bool) -> dict:
+        lines, decisions, funcs = metrics[f]
+        entry = {"file": f, "lines": lines, "decisions": decisions}
+        if not lab:
+            entry["symbols"], ids, classes = file_symbols(f, funcs, nodes_in_file[f], methods_of, file_nodes)
+            node_sid.update(ids)
+            sid_class.update(classes)
+        return entry
+
     areas = []
     for a in cfg.areas:
         files = [f for f, aid in file_area.items() if aid == a.id]
-        per_file = sorted(({"file": f, "lines": metrics[f][0], "decisions": metrics[f][1]} for f in files),
-                          key=lambda x: -x["lines"])
+        per_file = sorted((file_entry(f, a.lab) for f in files), key=lambda x: -x["lines"])
         lines = sum(x["lines"] for x in per_file)
         decisions = sum(x["decisions"] for x in per_file)
         areas.append({
@@ -84,10 +212,7 @@ def build(root: Path, cfg: Config, graph: Path | None = None) -> dict:
         })
     areas = [a for a in areas if a["nfiles"]]
     present = {a["id"] for a in areas}
-    lab_ids = {a.id for a in cfg.lab}
-    test_ids = {a.id for a in cfg.lab if a.tests}
 
-    node_file = {n["id"]: n.get("source_file") for n in nodes}
     links = defaultdict(lambda: {"count": 0, "solid": 0, "kinds": defaultdict(int)})
     flinks = defaultdict(int)
     tested_by = defaultdict(set)
@@ -124,6 +249,7 @@ def build(root: Path, cfg: Config, graph: Path | None = None) -> dict:
         "links": [{"from": s, "to": t, "count": d["count"], "solid": d["solid"], "kinds": dict(d["kinds"])}
                   for (s, t), d in sorted(links.items()) if s in present and t in present],
         "flinks": [[a, b, n] for (a, b), n in sorted(flinks.items())],
+        "slinks": [[a, b, n] for (a, b), n in sorted(symbol_links(edges, node_sid, sid_class).items())],
         "totals": {
             "shipped": total,
             "tests": sum(a["lines"] for a in areas if a["id"] in test_ids),

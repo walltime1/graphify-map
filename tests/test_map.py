@@ -62,3 +62,39 @@ def test_guess_without_config(repo):
     cfg = guess(repo)
     assert [a.id for a in cfg.lab] == ["tests"]
     assert cfg.area_of("app/ui/screen.py") is not None
+
+
+def file_entry(data, rel):
+    return next(f for a in data["areas"] for f in a["files"] if f["file"] == rel)
+
+
+def symbols_of(data, rel):
+    return file_entry(data, rel)["symbols"]
+
+
+def test_methods_are_grouped_under_their_class(repo):
+    data = build(repo, load(repo / "graphify-map.toml"))
+    (repo_class,) = symbols_of(data, "app/core/repo.py")
+    assert repo_class["kind"] == "class" and repo_class["name"] == "Repo"
+    assert [m["name"] for m in repo_class["methods"]] == ["add", "count"]
+    assert repo_class["lines"] == sum(m["lines"] for m in repo_class["methods"])
+    assert repo_class["decisions"] == sum(m["decisions"] for m in repo_class["methods"])
+    assert [s["name"] for s in symbols_of(data, "app/ui/screen.py")] == ["show", "add_one"]
+
+
+def test_lab_files_have_no_symbols(repo):
+    data = build(repo, load(repo / "graphify-map.toml"))
+    assert "symbols" not in file_entry(data, "tests/test_screen.py")
+
+
+def test_symbol_links_connect_functions_and_methods(repo):
+    data = build(repo, load(repo / "graphify-map.toml"))
+    sid = {s["name"]: f"{rel}#{s['line']}"
+           for rel in ("app/ui/screen.py", "app/core/store.py", "app/core/repo.py")
+           for s in symbols_of(data, rel)}
+    methods = {m["name"]: f"app/core/repo.py#{m['line']}" for m in symbols_of(data, "app/core/repo.py")[0]["methods"]}
+    pairs = {(a, b) for a, b, _ in data["slinks"]}
+    assert (sid["show"], sid["save"]) in pairs
+    assert (sid["add_one"], sid["Repo"]) in pairs
+    assert (methods["add"], methods["count"]) in pairs
+    assert not any(a == sid["Repo"] and b in methods.values() for a, b in pairs), "a class does not link to its own methods"

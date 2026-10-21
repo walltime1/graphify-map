@@ -101,6 +101,7 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .chip small{color:var(--muted);font-family:var(--mono);margin-left:4px}
 .page{padding:22px 0 40px;max-width:900px}
 .page h2{font-size:22px;margin:0 0 6px}
+.page h2.sub{font-size:18px;margin-top:34px}
 .page p.lead{color:var(--muted);margin:0 0 18px;max-width:65ch}
 .row{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--hair)}
 .row .nm{font-weight:600;cursor:pointer;background:none;border:0;text-align:left;padding:0}
@@ -108,6 +109,9 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .bar{height:14px;background:var(--band);border-radius:3px;position:relative;min-width:0}
 .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;border:1px solid var(--line)}
 .row .v{font:12px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;white-space:nowrap}
+.row.fn{grid-template-columns:minmax(200px,340px) minmax(0,1fr) auto}
+.row.fn .nm{overflow-wrap:anywhere}
+.row .nm small{display:block;font:400 11px var(--mono);color:var(--muted)}
 .row.users{grid-template-columns:minmax(120px,190px) minmax(0,1fr);align-items:start}
 .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 @media (max-width:860px){
@@ -141,7 +145,7 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
 .trow.sel .lb{font-weight:600;background:var(--band)}
 .trow.own .lb{background:var(--band)}
 .trow.hot .lb{color:var(--ink);font-weight:600}
-.trow.group .lb{font-weight:500}
+.trow.group .lb,.trow.class .lb{font-weight:500}
 .trow.layer .lb{font:600 10.5px var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .trow .tg{border:1px solid var(--hair);background:var(--panel);border-radius:999px;font:11px var(--sans);color:var(--muted);padding:0 8px;line-height:16px;cursor:pointer;margin-left:2px}
 .trow .tg:hover{border-color:var(--focus);color:var(--ink)}
@@ -169,7 +173,7 @@ table.files{width:100%;border-collapse:collapse;font-size:12px}
     <button role="tab" id="nav-shared" aria-selected="false" data-tab="shared">Shared building blocks</button>
     <button role="tab" id="nav-how" aria-selected="false" data-tab="how">How we measured</button>
   </nav>
-  <input id="search" type="search" placeholder="Search an area or file" aria-label="Search an area or file" autocomplete="off">
+  <input id="search" type="search" placeholder="Search an area, file or function" aria-label="Search an area, file or function" autocomplete="off">
 </header>
 
 <main>
@@ -234,7 +238,20 @@ const level = (m, a) => { const v = METRICS[m].val(a); return METRICS[m].breaks.
 const mtext = (m, a) => m === "size" ? fmt(a.lines) + " lines" : m === "tangle" ? a.tangle + " per 100 lines" : conn(a.id) + " links";
 
 // ---- layout (fixed layers, rows wrap at COLS)
-const BW = 184, BH = 58, GX = 20, ROWGAP = 16, COLS = 3, LABELH = 28, PAD = 16, LEFT = 12;
+// Boxes grow to fit the longest area name in the font the browser actually uses; past MAX_BW names are cut.
+const MIN_BW = 184, MAX_BW = 300, BOX_PAD = 24;
+function textWidth(text, cls) {
+  const probe = el("svg", { style: "position:absolute;visibility:hidden" }, document.body);
+  const t = el("text", { class: cls }, el("g", { class: "box" }, probe));
+  t.textContent = text;
+  const w = t.getComputedTextLength(); probe.remove(); return w;
+}
+function fitText(text, cls, maxWidth) {
+  let t = text;
+  while (t.length > 1 && textWidth(t, cls) > maxWidth) t = t.slice(0, -1);
+  return t === text ? t : t.trimEnd() + "…";
+}
+const BW = Math.min(MAX_BW, Math.max(MIN_BW, ...D.areas.map(a => textWidth(a.name, "nm") + BOX_PAD))), BH = 58, GX = 20, ROWGAP = 16, COLS = 3, LABELH = 28, PAD = 16, LEFT = 12;
 const pos = {}, bands = [];
 let y = 8;
 const layerOrder = LAYERS;
@@ -298,7 +315,8 @@ D.areas.forEach(a => {
   const { x, y } = pos[a.id];
   const g = el("g", { class: "box" + (a.lab ? " lab" : ""), tabindex: 0, role: "button", "aria-label": a.name, transform: `translate(${x} ${y})` }, gBoxes);
   const r = el("rect", { width: BW, height: BH, rx: 6 }, g);
-  const t1 = el("text", { class: "nm", x: 12, y: 24 }, g); t1.textContent = a.name;
+  el("title", {}, g).textContent = a.name;
+  const t1 = el("text", { class: "nm", x: 12, y: 24 }, g); t1.textContent = fitText(a.name, "nm", BW - BOX_PAD);
   const t2 = el("text", { class: "mt", x: 12, y: 43 }, g);
   g.addEventListener("click", () => { if (!moved) choose(a.id); });
   g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(a.id); } });
@@ -409,7 +427,13 @@ function sideArea(id) {
   <h3>Used by</h3><div class="chips">${downs.length ? downs.map(l => chip(l.from, l.count)).join("") : "<span class='kick'>Nothing. It is an entry point.</span>"}</div>
   <h3>Biggest files</h3>
   <table class="files">${files.map(f => `<tr><td>${esc(f.file)}</td><td class="n">${fmt(f.lines)}</td><td class="n">${f.lines ? (100 * f.decisions / f.lines).toFixed(0) : 0}</td></tr>`).join("")}</table>
-  <div class="hint">Columns: code lines, tangle per 100 lines.</div>`;
+  <div class="hint">Columns: code lines, tangle per 100 lines.</div>${biggestFunctions(id)}`;
+}
+function biggestFunctions(id) {
+  const fns = topN(SYMBOLS.filter(m => m.area === id && m.kind !== "class"), 5, m => m.lines);
+  if (!fns.length) return "";
+  return `<h3>Biggest functions</h3>
+  <table class="files">${fns.map(m => `<tr><td>${esc(m.name)}<br><small class="kick">${esc(fileName(m.file))}</small></td><td class="n">${fmt(m.lines)}</td><td class="n">${m.tangle.toFixed(0)}</td></tr>`).join("")}</table>`;
 }
 
 // ---- questions: each returns the answer html and the areas to highlight
@@ -470,19 +494,52 @@ seg("#labSeg", "b", v => { showLab = v === "1"; paint(); });
 $("#search").addEventListener("input", e => {
   query = e.target.value.trim().toLowerCase(); showTab("map");
   if (!query) { focusSet = null; paint(); return; }
-  const hit = D.areas.filter(a => a.name.toLowerCase().includes(query) || a.files.some(f => f.file.toLowerCase().includes(query)));
+  const hit = D.areas.filter(a => a.name.toLowerCase().includes(query) || a.files.some(f => f.file.toLowerCase().includes(query))
+    || SYMBOLS.some(m => m.area === a.id && m.name.toLowerCase().includes(query)));
   focusSet = new Set(hit.map(a => a.id)); sel = null; paint();
   $("#side").innerHTML = `<button class="back" data-back>← Back to overview</button><h2>${hit.length ? hit.length + (hit.length === 1 ? " area matches" : " areas match") : "No match"}</h2>
     <div class="chips">${hit.map(a => chip(a.id)).join("")}</div>${hit.length ? "" : "<p>Try part of a file name or an area name.</p>"}`;
 });
 $("#search").addEventListener("keydown", e => { if (e.key === "Enter") { const f = [...focusSet || []][0]; if (f) choose(f); } });
 
+// ---- units: files, and the classes and functions inside them
+const FILE = {}, SYM = {};
+const tangleOf = (lines, decisions) => lines ? 100 * decisions / lines : 0;
+ship.forEach(a => a.files.forEach(f => {
+  FILE[f.file] = { ...f, area: a.id, tangle: tangleOf(f.lines, f.decisions) };
+  const reg = (s, parent) => {
+    s.id = f.file + "#" + s.line;
+    SYM[s.id] = { ...s, parent, file: f.file, area: a.id, tangle: tangleOf(s.lines, s.decisions) };
+    (s.methods || []).forEach(m => reg(m, s.id));
+  };
+  (f.symbols || []).forEach(s => reg(s));
+}));
+const U = id => FILE[id] || SYM[id];
+const fileName = path => path.split("/").pop();
+const symLabel = s => s.kind === "class" ? s.name : s.name + "()";
+const unitLabel = id => SYM[id] ? symLabel(SYM[id]) : fileName(id);
+const nodeIdOf = id => (SYM[id] ? "s:" : "f:") + id;
+const SYMBOLS = Object.values(SYM);
+
 // ---- other tabs
 const bar = (v, max, lv) => `<div class="bar"><i style="width:${Math.max(2, 100 * v / max)}%;background:var(--r${lv})"></i></div>`;
 function renderHeavy() {
   const rows = ship.slice().sort((a, b) => b.lines - a.lines), max = rows[0].lines;
   $("#heavy").innerHTML = `<h2>Heaviest areas</h2><p class="lead">Bar length is code size. Shading is tangle: darker means more decision points per 100 lines. The biggest areas are not always the most tangled.</p>` +
-    rows.map(a => `<div class="row"><button class="nm" data-open="${a.id}">${esc(a.name)}</button>${bar(a.lines, max, level("tangle", a))}<span class="v">${fmt(a.lines)} lines · tangle ${a.tangle}</span></div>`).join("");
+    rows.map(a => `<div class="row"><button class="nm" data-open="${a.id}">${esc(a.name)}</button>${bar(a.lines, max, level("tangle", a))}<span class="v">${fmt(a.lines)} lines · tangle ${a.tangle}</span></div>`).join("") + heavyFunctions();
+}
+const MIN_RANKED_LINES = 10;
+function heavyFunctions() {
+  const fns = SYMBOLS.filter(m => m.kind !== "class");
+  if (!fns.length) return "";
+  const list = (title, lead, items, value) => {
+    const max = Math.max(...items.map(value), 1);
+    return `<h2 class="sub">${title}</h2><p class="lead">${lead}</p>` + items.map(m =>
+      `<div class="row fn"><button class="nm" data-sym="${esc(m.id)}">${esc(symLabel(m))}<small>${esc(m.file)}</small></button>${bar(value(m), max, [20, 25, 30, 35].filter(b => m.tangle >= b).length)}<span class="v">${fmt(m.lines)} lines · ${m.decisions} decisions</span></div>`).join("");
+  };
+  return list("Biggest functions", "Code lines per function or method. Click one to open it in the two trees.", topN(fns, 15, m => m.lines), m => m.lines)
+    + list("Most branching functions", `Decision points per function, for functions of ${MIN_RANKED_LINES} lines or more. Short functions are left out because one branch is a large share of a small body.`,
+           topN(fns.filter(m => m.lines >= MIN_RANKED_LINES), 15, m => m.decisions), m => m.decisions);
 }
 function renderShared() {
   const rows = ship.map(a => ({ a, u: usedBy(a.id) })).filter(r => r.u.length).sort((x, y) => y.u.length - x.u.length);
@@ -495,25 +552,32 @@ function renderHow() {
   <p><b>Areas.</b> Each source file is placed in the first area whose patterns match it, from the area config. Areas sit in layers, top to bottom.</p>
   <p><b>Size.</b> Code lines counted by lizard, without blanks or comments.</p>
   <p><b>Tangle.</b> Decision points (branches, loops, boolean operators; cyclomatic complexity minus one for each function) summed over an area, per 100 code lines. A higher number means more paths to test.</p>
+  <p><b>Functions and classes.</b> Inside each shipped file, lizard measures every function and method. Graphify’s extractor says which methods belong to which class, and a class is sized as the sum of its methods. Function-level arrows are graphify’s call and reference edges between two of them. Both trees open a file into its classes and functions.</p>
   <p><b>Arrows.</b> Graphify’s extractor finds calls, imports and references between files. Links inside one area are dropped. Links between two areas are added up. “Main links” shows the top 40% by count. Selecting an area shows all of its links.</p>
   <p><b>Lab.</b> Tests and tools never ship. Their arrows come from the same extraction.</p>
-  <p><b>Limits.</b> Calls through dynamic dispatch can be missed. “Test files use it” is not coverage.</p>`;
+  <p><b>Limits.</b> Calls through dynamic dispatch can be missed. “Test files use it” is not coverage. Code outside any function, such as module-level statements, belongs to the file but to no function.</p>`;
 }
 renderHeavy(); renderShared(); renderHow();
-document.addEventListener("click", e => { const b = e.target.closest("[data-open]"); if (b) { showTab("map"); choose(b.dataset.open); } });
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-open]"); if (b) { showTab("map"); choose(b.dataset.open); return; }
+  const m = e.target.closest("[data-sym]"); if (m) { showTab("trees"); tsel = null; pickNode(NODES.folder["s:" + m.dataset.sym]); }
+});
 
 // ---- two trees: folder tree (where code sits) and area tree (who it belongs to)
-const FILE = {};
-ship.forEach(a => a.files.forEach(f => FILE[f.file] = { ...f, area: a.id, tangle: f.lines ? 100 * f.decisions / f.lines : 0 }));
 const fOut = {}, fIn = {};
-(D.flinks || []).forEach(([a, b, n]) => { (fOut[a] ||= {})[b] = n; (fIn[b] ||= {})[a] = n; });
-const fileLevel = f => [20, 25, 30, 35].filter(b => FILE[f].tangle >= b).length;
-function mkNode(id, label, kind, kids, file) {
-  const n = { id, label, kind, kids: kids || [], file };
-  n.files = file ? [file] : n.kids.flatMap(k => k.files);
-  n.lines = n.files.reduce((s, f) => s + FILE[f].lines, 0);
+[...(D.flinks || []), ...(D.slinks || [])].forEach(([a, b, n]) => { (fOut[a] ||= {})[b] = n; (fIn[b] ||= {})[a] = n; });
+const unitLevel = id => [20, 25, 30, 35].filter(b => U(id).tangle >= b).length;
+// A node with a unit is a file, class or function. `files` is what the node stands for in the links
+// (folders and areas stand for their files); `all` also holds every unit nested below it.
+function mkNode(id, label, kind, kids, unit) {
+  const n = { id, label, kind, kids: kids || [], unit };
+  n.files = unit ? [unit] : n.kids.flatMap(k => k.files);
+  n.all = [...(unit ? [unit] : []), ...n.kids.flatMap(k => k.all)];
+  n.lines = unit ? U(unit).lines : n.files.reduce((s, f) => s + FILE[f].lines, 0);
   return n;
 }
+const symNode = m => mkNode("s:" + m.id, symLabel(m), m.kind, (m.methods || []).map(symNode), m.id);
+const fileNode = (file, label) => mkNode("f:" + file, label, "file", (FILE[file].symbols || []).map(symNode), file);
 function folderTree() {
   const root = { dirs: {}, files: [] };
   Object.keys(FILE).sort().forEach(f => {
@@ -523,25 +587,33 @@ function folderTree() {
   });
   const conv = (d, path) => mkNode("d:" + path, d.name + "/", "dir",
     [...Object.entries(d.dirs).map(([k, v]) => conv(v, path + "/" + k)),
-     ...d.files.map(f => mkNode("f:" + f, f.split("/").pop(), "file", [], f))]);
+     ...d.files.map(f => fileNode(f, fileName(f)))]);
   return mkNode("root", "", "root", [...Object.entries(root.dirs).map(([k, v]) => conv(v, k)),
-    ...root.files.map(f => mkNode("f:" + f, f, "file", [], f))]);
+    ...root.files.map(f => fileNode(f, f))]);
 }
 function areaTree() {
   const layers = LAYERS.map(lid => mkNode("l:" + lid, D.layers.find(l => l.id === lid).name, "layer",
     ship.filter(a => a.layer === lid).map(a => mkNode("a:" + a.id, a.name, "area",
-      a.files.map(f => mkNode("f:" + f.file, f.file.split("/").pop(), "file", [], f.file))))));
+      a.files.map(f => fileNode(f.file, fileName(f.file)))))));
   return mkNode("root", "", "root", layers);
 }
 const TR = { folder: folderTree(), area: areaTree() };
 const NODES = { folder: {}, area: {} }, PARENT = { folder: {}, area: {} };
-const index = (key, n, p) => { NODES[key][n.id] = n; PARENT[key][n.id] = p; n.kids.forEach(k => index(key, k, n)); };
+const index = (key, n, p) => {
+  NODES[key][n.id] = n; PARENT[key][n.id] = p;
+  n.anc = new Set([...(p ? p.anc : []), ...(p && p.unit ? [p.unit] : [])]);
+  n.kids.forEach(k => index(key, k, n));
+};
 index("folder", TR.folder, null); index("area", TR.area, null);
-const collapsed = { folder: new Set(Object.values(NODES.folder).filter(n => n.kind === "dir" && PARENT.folder[n.id]?.kind !== "root" && n.files.length > 20).map(n => n.id)), area: new Set(ship.map(a => "a:" + a.id)) };
+const filesWithSymbols = key => Object.values(NODES[key]).filter(n => n.kind === "file" && n.kids.length).map(n => n.id);
+const collapsed = {
+  folder: new Set([...Object.values(NODES.folder).filter(n => n.kind === "dir" && PARENT.folder[n.id]?.kind !== "root" && n.files.length > 20).map(n => n.id), ...filesWithSymbols("folder")]),
+  area: new Set([...ship.map(a => "a:" + a.id), ...filesWithSymbols("area")]),
+};
 const TPAD = { folder: 150, area: 4 }, ROW = 24;
 const dotX = (key, d) => TPAD[key] + d * 18 + 4.5;
 const yOf = row => row.i * ROW + ROW / 2;
-const mkSel = n => ({ id: n.id, files: new Set(n.files), label: n.label.replace(/\/$/, ""), n });
+const mkSel = n => ({ id: n.id, files: new Set(n.files), all: new Set(n.all), label: n.label.replace(/\/$/, ""), n });
 let tsel = null, thover = null, FL = null;
 
 function flatten(tree, coll) {
@@ -550,7 +622,8 @@ function flatten(tree, coll) {
     let row = prow;
     if (n.kind !== "root") {
       row = { n, depth, i: rows.length, parent: prow }; rows.push(row);
-      if (coll.has(n.id) || !n.kids.length) n.files.forEach(f => rowOf[f] = row);
+      if (n.unit) rowOf[n.unit] = row;
+      if (coll.has(n.id) || !n.kids.length) n.all.forEach(f => rowOf[f] = row);
     }
     if (!coll.has(n.id)) n.kids.forEach(k => walk(k, n.kind === "root" ? 0 : depth + 1, n.kind === "root" ? null : row));
   };
@@ -562,25 +635,27 @@ function relFor(sel) {
     for (const [t, c] of Object.entries(fOut[f] || {})) if (!sel.files.has(t)) out.set(t, (out.get(t) || 0) + c);
     for (const [t, c] of Object.entries(fIn[f] || {})) if (!sel.files.has(t)) inn.set(t, (inn.get(t) || 0) + c);
   });
-  return { out, inn };
+  // a class stands for its methods, so drop a method whose class is already listed
+  const prune = m => new Map([...m].filter(([u]) => !(SYM[u] && m.has(SYM[u].parent))));
+  return { out: prune(out), inn: prune(inn) };
 }
-function reveal(file) {
-  collapsed.area.delete("a:" + FILE[file].area);
-  for (let p = PARENT.folder["f:" + file]; p; p = PARENT.folder[p.id]) collapsed.folder.delete(p.id);
+function reveal(nodeId) {
+  for (const key of ["folder", "area"]) for (let p = PARENT[key][nodeId]; p; p = PARENT[key][p.id]) collapsed[key].delete(p.id);
 }
 
 function renderTrees() {
   FL = { folder: flatten(TR.folder, collapsed.folder), area: flatten(TR.area, collapsed.area) };
   const rowsHtml = key => FL[key].rows.map(({ n, depth }) => {
-    const isColl = collapsed[key].has(n.id), group = n.kind !== "file";
-    const dot = n.kind === "file" ? `<span class="dot" style="background:var(--r${fileLevel(n.file)})"></span>` : `<span class="dot"></span>`;
-    const tog = n.kids.length && n.kind !== "layer" && depth > 0
-      ? `<button class="tg" data-tog="${esc(n.id)}" aria-expanded="${!isColl}">${isColl ? `+${n.files.length} files` : "fold"}</button>` : "";
+    const isColl = collapsed[key].has(n.id), group = !["file", "function", "method"].includes(n.kind);
+    const dot = n.unit ? `<span class="dot" style="background:var(--r${unitLevel(n.unit)})"></span>` : `<span class="dot"></span>`;
+    const more = n.unit ? `+${n.all.length - 1} ${n.kind === "class" ? "methods" : "symbols"}` : `+${n.files.length} files`;
+    const tog = n.kids.length && n.kind !== "layer" && (depth > 0 || n.unit)
+      ? `<button class="tg" data-tog="${esc(n.id)}" aria-expanded="${!isColl}">${isColl ? more : "fold"}</button>` : "";
     return `<div class="trow ${n.kind}${group ? " group" : ""}" tabindex="0" style="padding-left:${depth * 18}px" data-k="${key}" data-id="${esc(n.id)}">${dot}<span class="lb">${esc(n.label)}<em>${fmt(n.lines)}</em></span>${tog}</div>`;
   }).join("");
   const tree = key => `<div class="tree" id="tree-${key}" style="height:${FL[key].rows.length * ROW}px;padding-left:${TPAD[key]}px">
     <svg height="${FL[key].rows.length * ROW}"><g class="lines"></g><g class="arcs"></g></svg>${rowsHtml(key)}</div>`;
-  $("#trees").innerHTML = `<div class="tintro">Same code, two ways to group it. Hover or click a file, folder or area. Arcs on the folder tree show what it uses <span class="k"></span> and what uses it <span class="k in"></span>. Everything unrelated fades. Dot shade is tangle; numbers are code lines.</div>
+  $("#trees").innerHTML = `<div class="tintro">Same code, two ways to group it. Hover or click a file, folder or area, and open a file to see its classes and functions. Arcs on the folder tree show what it uses <span class="k"></span> and what uses it <span class="k in"></span>. Everything unrelated fades. Dot shade is tangle; numbers are code lines.</div>
   <div class="trees">
     <div class="tcol"><h2>Folder tree</h2><div class="sub">Where the files sit on disk.</div>${tree("folder")}</div>
     <div class="tcol tcol-side"><div id="tcard"></div><h2>Area tree</h2><div class="sub">Which area each file belongs to.</div>${tree("area")}</div>
@@ -602,14 +677,14 @@ function drawLines(key) {
 function paintTrees() {
   if (!FL) return;
   const act = thover || tsel, rel = act ? relFor(act) : null;
-  const involved = rel ? new Set([...act.files, ...rel.out.keys(), ...rel.inn.keys()]) : null;
+  const involved = rel ? new Set([...act.all, ...rel.out.keys(), ...rel.inn.keys()]) : null;
   document.querySelectorAll("#trees .trow").forEach(el => {
     const n = NODES[el.dataset.k][el.dataset.id];
-    const hot = involved && n.files.some(f => involved.has(f));
+    const hot = involved && (n.all.some(f => involved.has(f)) || [...n.anc].some(f => involved.has(f)));
     el.classList.toggle("fade", !!involved && !hot);
     el.classList.toggle("hot", !!hot && n.kind !== "layer");
     el.classList.toggle("sel", !!act && act.id === n.id);
-    el.classList.toggle("own", !!act && act.id !== n.id && n.files.length > 0 && n.files.every(f => act.files.has(f)));
+    el.classList.toggle("own", !!act && act.id !== n.id && n.all.length > 0 && n.all.every(f => act.all.has(f)));
   });
   const g = $("#tree-folder .arcs"); let h = "";
   if (rel) {
@@ -631,24 +706,26 @@ function paintCard() {
   const c = $("#tcard");
   if (!tsel) { c.className = "tcard empty"; c.innerHTML = "Nothing selected. Click a row to pin it here."; return; }
   const rel = relFor(tsel), n = tsel.n;
-  const tangle = n.files.length ? (100 * n.files.reduce((s, f) => s + FILE[f].decisions, 0) / Math.max(n.lines, 1)).toFixed(0) : 0;
-  const where = n.kind === "file" ? A[FILE[n.file].area].name : `${n.files.length} files`;
+  const decisions = n.unit ? U(n.unit).decisions : n.files.reduce((s, f) => s + FILE[f].decisions, 0);
+  const tangle = n.files.length ? (100 * decisions / Math.max(n.lines, 1)).toFixed(0) : 0;
+  const where = n.kind === "file" ? A[FILE[n.unit].area].name : n.unit ? `${fileName(U(n.unit).file)} · ${A[U(n.unit).area].name}` : `${n.files.length} files`;
+  const noun = SYM[n.unit] ? "symbols" : "files";
   const chips = m => { const e = [...m.entries()].sort((a, b) => b[1] - a[1]);
-    return e.length ? `<div class="chips">${e.slice(0, 10).map(([f, k]) => `<button class="chip" data-pick="${esc(f)}">${esc(f.split("/").pop())}<small>${k}</small></button>`).join("")}${e.length > 10 ? `<span class="chip">+${e.length - 10} more</span>` : ""}</div>` : "<span>none</span>"; };
+    return e.length ? `<div class="chips">${e.slice(0, 10).map(([f, k]) => `<button class="chip" data-pick="${esc(f)}">${esc(unitLabel(f))}<small>${k}</small></button>`).join("")}${e.length > 10 ? `<span class="chip">+${e.length - 10} more</span>` : ""}</div>` : "<span>none</span>"; };
   c.className = "tcard";
   c.innerHTML = `<div class="hd"><b>${esc(tsel.label)}</b><span>${esc(where)} · ${fmt(n.lines)} lines · tangle ${tangle}</span><button data-clear>Clear</button></div>
-    <div class="rl"><div><span class="k"></span> uses ${rel.out.size} files</div>${chips(rel.out)}
-    <div><span class="k in"></span> used by ${rel.inn.size} files</div>${chips(rel.inn)}</div>`;
+    <div class="rl"><div><span class="k"></span> uses ${rel.out.size} ${noun}</div>${chips(rel.out)}
+    <div><span class="k in"></span> used by ${rel.inn.size} ${noun}</div>${chips(rel.inn)}</div>`;
 }
 function pickNode(n) {
   tsel = tsel && tsel.id === n.id ? null : mkSel(n); thover = null;
-  if (tsel && n.kind === "file") { reveal(n.file); renderTrees(); } else paintTrees();
+  if (tsel && n.unit) { reveal(n.id); renderTrees(); } else paintTrees();
 }
 $("#trees").addEventListener("click", e => {
   const tg = e.target.closest("[data-tog]");
   if (tg) { const k = tg.closest(".trow").dataset.k, id = tg.dataset.tog; collapsed[k].has(id) ? collapsed[k].delete(id) : collapsed[k].add(id); renderTrees(); return; }
   const pk = e.target.closest("[data-pick]");
-  if (pk) { tsel = null; pickNode(NODES.folder["f:" + pk.dataset.pick]); return; }
+  if (pk) { tsel = null; pickNode(NODES.folder[nodeIdOf(pk.dataset.pick)]); return; }
   if (e.target.closest("[data-clear]")) { tsel = null; paintTrees(); return; }
   const row = e.target.closest(".trow"); if (row) pickNode(NODES[row.dataset.k][row.dataset.id]);
 });
@@ -668,7 +745,7 @@ function pickArea(id) {
 }
 const linkCount = f => Object.keys(fOut[f] || {}).length + Object.keys(fIn[f] || {}).length;
 const busiest = Object.keys(FILE).sort((a, b) => linkCount(b) - linkCount(a))[0];
-if (busiest && linkCount(busiest)) { tsel = mkSel(NODES.folder["f:" + busiest]); reveal(busiest); }
+if (busiest && linkCount(busiest)) { tsel = mkSel(NODES.folder["f:" + busiest]); reveal("f:" + busiest); }
 renderTrees();
 
 function showTab(t) {

@@ -57,7 +57,8 @@ A file goes to the first area whose `files` globs match it. `*` stays inside one
 
 - **Overview**: areas in layers. Shade boxes by size, tangle or connections. Arrows mean "uses". Click an area for its files, what it uses and what uses it.
 - **Two trees**: the same files grouped by folder and by area. Hover or click to see file-level arcs for what a file uses and what uses it.
-- **Heaviest** and **Shared building blocks**: ranked lists.
+- **Functions and classes**: open any file in either tree to see its classes, methods and functions, each with size and tangle. Select one to see which other functions or classes it uses and which use it.
+- **Heaviest** and **Shared building blocks**: ranked lists. Heaviest also ranks the biggest and most branching functions.
 - **Ask the map**: precomputed answers, such as what is most tangled or which areas depend on each other both ways.
 
 ## How it measures
@@ -65,6 +66,7 @@ A file goes to the first area whose `files` globs match it. `*` stays inside one
 - **Size**: code lines from lizard, without blanks or comments.
 - **Tangle**: decision points per 100 code lines. That is cyclomatic complexity minus one, summed over functions.
 - **Links**: graphify edges between files in different areas, excluding structural edges such as `contains`.
+- **Functions and classes**: lizard measures each function and method. Graphify says which methods belong to which class, and a class is the sum of its methods. Function-level links are graphify's call and reference edges between them. Code outside any function counts toward the file only.
 - **Tests per area**: how many lab files marked `tests = true` reference the area. This is not line coverage.
 
 Only files that both graphify and lizard can read are counted.
